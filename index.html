@@ -593,8 +593,8 @@
     .player-filter.active { background:var(--navy); color:#fff; border-color:var(--navy); }
 
     .roster-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .player-card { min-height: 410px; perspective: 1200px; }
-    .player-card-inner { position:relative; width:100%; height:100%; min-height:410px; transition:transform .58s cubic-bezier(.2,.7,.2,1); transform-style:preserve-3d; }
+    .player-card { min-height: 440px; perspective: 1200px; }
+    .player-card-inner { position:relative; width:100%; min-height:440px; transition:transform .58s cubic-bezier(.2,.7,.2,1); transform-style:preserve-3d; }
     .player-card.flipped .player-card-inner { transform:rotateY(180deg); }
     .player-face {
       position:absolute;
@@ -604,6 +604,7 @@
       backface-visibility:hidden;
       -webkit-backface-visibility:hidden;
       overflow:hidden;
+      min-height:100%;
       border-radius:23px;
       background:#fff;
       border:1px solid var(--line);
@@ -622,7 +623,7 @@
       transform:none !important;
     }
     .card-avatar.placeholder { background:linear-gradient(145deg,#fff,#e8f3ff); font-size:28px; }
-    .card-body { flex:1; display:flex; flex-direction:column; padding:18px; min-height:0; }
+    .card-body { flex:1; display:flex; flex-direction:column; padding:18px 18px 22px; min-height:0; }
     .player-name { margin:0; color:var(--navy); font-size:25px; line-height:1.05; letter-spacing:-.035em; }
     .player-role { margin-top:5px; color:var(--red); font-size:11px; font-weight:950; text-transform:uppercase; letter-spacing:.08em; }
     .card-mini-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin:17px 0 13px; }
@@ -1057,7 +1058,7 @@
       .player-summary { grid-template-columns:1fr 1fr; }
       .badge-wall-grid { grid-template-columns:1fr; }
       .achievement-head { align-items:flex-start; flex-direction:column; }
-      .player-card, .player-card-inner { min-height:400px; }
+      .player-card, .player-card-inner { min-height:440px; }
       .stat { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.14); }
       .stat:last-child { border-bottom: 0; }
       .section-head { align-items: start; flex-direction: column; }
@@ -1244,7 +1245,7 @@
         </div>
 
         <div class="player-toolbar">
-          <div class="player-toolbar-note"><strong>🏐 2026–27 Player Card Collection:</strong> tap “Flip Card” for profile details, milestones, and the full badge rack.</div>
+          <div class="player-toolbar-note"><strong>🏐 2026–27 Player Card Collection:</strong> tap “View Player Profile” for profile details, milestones, and the full badge rack.</div>
           <div>
             <div class="player-filters" aria-label="Player filters">
               <button class="player-filter active" data-player-filter="all">All Players</button>
@@ -1688,6 +1689,7 @@
       rosterGrid.innerHTML = visible.map(renderPlayerCard).join('');
       if (!visible.length) rosterGrid.innerHTML = '<div class="stats-pending">No players match this filter yet.</div>';
       wirePlayerFlips();
+      requestAnimationFrame(syncPlayerCardHeights);
     }
 
     function wirePlayerFlips() {
@@ -1698,6 +1700,37 @@
         });
       });
     }
+
+    function syncPlayerCardHeights() {
+      document.querySelectorAll('.player-card').forEach(card => {
+        const inner = card.querySelector('.player-card-inner');
+        const front = card.querySelector('.player-front');
+        const back = card.querySelector('.player-back');
+        if (!inner || !front || !back) return;
+
+        // Reset to a baseline first so scrollHeight reflects the content itself.
+        const baseline = window.innerWidth <= 720 ? 440 : 440;
+        card.style.height = baseline + 'px';
+        inner.style.height = baseline + 'px';
+
+        // Because both faces are absolutely positioned, their content does not
+        // contribute to the parent's natural height. Measure them explicitly.
+        const needed = Math.ceil(Math.max(
+          front.scrollHeight,
+          back.scrollHeight,
+          baseline
+        ) + 4);
+
+        card.style.height = needed + 'px';
+        inner.style.height = needed + 'px';
+      });
+    }
+
+    let playerCardResizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(playerCardResizeTimer);
+      playerCardResizeTimer = setTimeout(syncPlayerCardHeights, 120);
+    });
 
     function findLeader(statKey, label, icon, formatter = value => value) {
       const eligible = players.filter(player => player.statsTracked);
